@@ -13,6 +13,8 @@ const overlayTitle = document.getElementById('overlayTitle');
 const overlayMessage = document.getElementById('overlayMessage');
 const startBtn = document.getElementById('startBtn');
 const touchControls = document.getElementById('touchControls');
+const btnPause = document.getElementById('btnPause');
+const btnMute = document.getElementById('btnMute');
 
 // Game Settings & Constants
 const GAME_WIDTH = 800;
@@ -34,6 +36,7 @@ const COLORS = {
 class SoundEngine {
     constructor() {
         this.ctx = null;
+        this.muted = localStorage.getItem('neon_invaders_muted') === 'true';
     }
 
     init() {
@@ -42,7 +45,13 @@ class SoundEngine {
         }
     }
 
+    toggleMute() {
+        this.muted = !this.muted;
+        localStorage.setItem('neon_invaders_muted', this.muted);
+    }
+
     playShoot() {
+        if (this.muted) return;
         this.init();
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator();
@@ -62,6 +71,7 @@ class SoundEngine {
     }
 
     playInvaderShoot() {
+        if (this.muted) return;
         this.init();
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator();
@@ -81,6 +91,7 @@ class SoundEngine {
     }
 
     playExplosion() {
+        if (this.muted) return;
         this.init();
         if (!this.ctx) return;
         
@@ -112,6 +123,7 @@ class SoundEngine {
     }
 
     playHit() {
+        if (this.muted) return;
         this.init();
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator();
@@ -131,6 +143,7 @@ class SoundEngine {
     }
 
     playBeep(frequency, duration = 0.1) {
+        if (this.muted) return;
         this.init();
         if (!this.ctx) return;
         const osc = this.ctx.createOscillator();
@@ -494,10 +507,12 @@ class Game {
         // モバイル操作状態
         this.isMobileLeft = false;
         this.isMobileRight = false;
+        this.isMobileFire = false;
 
         // イベントバインド
         this.bindEvents();
         this.updateHUD();
+        this.updateMuteUI();
     }
 
     bindEvents() {
@@ -508,19 +523,19 @@ class Game {
             // 一時停止
             if (e.code === 'KeyP' && this.state === 'PLAYING') {
                 this.state = 'PAUSED';
+                btnPause.textContent = '▶';
+                btnPause.classList.add('paused');
                 this.showOverlay('PAUSED', '一時停止中', 'Pキーで再開');
             } else if (e.code === 'KeyP' && this.state === 'PAUSED') {
                 this.state = 'PLAYING';
+                btnPause.textContent = '⏸';
+                btnPause.classList.remove('paused');
                 this.hideOverlay();
             }
 
             // スペースキーのブラウザデフォルトスクロール防止
             if (e.code === 'Space') {
                 e.preventDefault();
-                if (this.state === 'PLAYING') {
-                    const bullet = this.player.shoot();
-                    if (bullet) this.projectiles.push(bullet);
-                }
             }
         });
 
@@ -537,8 +552,32 @@ class Game {
                 this.hideOverlay();
             } else if (this.state === 'PAUSED') {
                 this.state = 'PLAYING';
+                btnPause.textContent = '⏸';
+                btnPause.classList.remove('paused');
                 this.hideOverlay();
             }
+        });
+
+        // ポーズボタンのクリック
+        btnPause.addEventListener('click', () => {
+            sound.init();
+            if (this.state === 'PLAYING') {
+                this.state = 'PAUSED';
+                btnPause.textContent = '▶';
+                btnPause.classList.add('paused');
+                this.showOverlay('PAUSED', '一時停止中', 'ボタンまたはPキーで再開');
+            } else if (this.state === 'PAUSED') {
+                this.state = 'PLAYING';
+                btnPause.textContent = '⏸';
+                btnPause.classList.remove('paused');
+                this.hideOverlay();
+            }
+        });
+
+        // ミュートボタンのクリック
+        btnMute.addEventListener('click', () => {
+            sound.toggleMute();
+            this.updateMuteUI();
         });
 
         // モバイルコントローラーイベント
@@ -554,16 +593,24 @@ class Game {
         window.addEventListener('touchstart', showTouchControls, { once: true });
 
         btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); this.isMobileLeft = true; });
-        btnLeft.addEventListener('touchend', () => this.isMobileLeft = false);
+        btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); this.isMobileLeft = false; });
+        btnLeft.addEventListener('touchcancel', (e) => { e.preventDefault(); this.isMobileLeft = false; });
+        
         btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); this.isMobileRight = true; });
-        btnRight.addEventListener('touchend', () => this.isMobileRight = false);
+        btnRight.addEventListener('touchend', (e) => { e.preventDefault(); this.isMobileRight = false; });
+        btnRight.addEventListener('touchcancel', (e) => { e.preventDefault(); this.isMobileRight = false; });
 
         btnFire.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            if (this.state === 'PLAYING') {
-                const bullet = this.player.shoot();
-                if (bullet) this.projectiles.push(bullet);
-            }
+            this.isMobileFire = true;
+        });
+        btnFire.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            this.isMobileFire = false;
+        });
+        btnFire.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            this.isMobileFire = false;
         });
     }
 
@@ -653,6 +700,16 @@ class Game {
         screenOverlay.classList.remove('active');
     }
 
+    updateMuteUI() {
+        if (sound.muted) {
+            btnMute.textContent = '🔇';
+            btnMute.title = '消音中';
+        } else {
+            btnMute.textContent = '🔊';
+            btnMute.title = '音量ON';
+        }
+    }
+
     // AABB型衝突判定ユーティリティ
     checkAABB(rect1, rect2) {
         return rect1.x < rect2.x + rect2.width &&
@@ -667,6 +724,7 @@ class Game {
             this.particles.push(new Particle(x, y, color));
         }
         sound.playExplosion();
+        if (navigator.vibrate) navigator.vibrate(15); // 撃破時の軽いバイブレーション
     }
 
     update() {
@@ -675,10 +733,13 @@ class Game {
         // 1. プレイヤーの更新
         this.player.update(this.keys, this.isMobileLeft, this.isMobileRight);
 
-        // キーボードスペースキー連射対応 (updateループ内での射撃)
-        if (this.keys['Space']) {
+        // キーボードスペースキーまたはモバイル射撃ボタン連射対応 (updateループ内での射撃)
+        if (this.keys['Space'] || this.isMobileFire) {
             const bullet = this.player.shoot();
-            if (bullet) this.projectiles.push(bullet);
+            if (bullet) {
+                this.projectiles.push(bullet);
+                if (navigator.vibrate) navigator.vibrate(8); // 射撃時の短いバイブレーション
+            }
         }
 
         // 2. 弾の更新
@@ -811,6 +872,7 @@ class Game {
                     this.createExplosion(this.player.x + this.player.width / 2, this.player.y + this.player.height / 2, COLORS.player);
                     this.lives--;
                     this.updateHUD();
+                    if (navigator.vibrate) navigator.vibrate(100); // 被弾時の強いバイブレーション
                     
                     if (this.lives <= 0) {
                         this.triggerGameOver();
@@ -826,8 +888,11 @@ class Game {
 
     triggerGameOver() {
         this.state = 'GAMEOVER';
+        btnPause.textContent = '⏸';
+        btnPause.classList.remove('paused');
         this.showOverlay('GAMEOVER', 'MISSION FAILED', `最終スコア: ${this.score} - 地球はネオンに包まれた...`);
         sound.playBeep(110, 0.8);
+        if (navigator.vibrate) navigator.vibrate([100, 50, 100]); // ゲームオーバー時の連続バイブレーション
     }
 
     draw() {

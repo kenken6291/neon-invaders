@@ -186,6 +186,10 @@ header {
     display: block;
     width: 100%;
     height: 100%;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
 }
 
 /* 画面オーバーレイ (スタート/ゲームオーバー等) */
@@ -276,6 +280,43 @@ header {
     color: #fff;
 }
 
+/* ゲームコントロール（一時停止・ミュート） */
+.game-controls {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.control-btn {
+    background: rgba(10, 10, 25, 0.6);
+    color: #fff;
+    border: 1px solid var(--neon-blue);
+    border-radius: 6px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0, 240, 255, 0.2);
+    transition: all 0.2s ease;
+    font-size: 1.1rem;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+}
+
+.control-btn:hover {
+    background: var(--neon-blue);
+    color: #000;
+    box-shadow: 0 0 15px var(--neon-blue);
+}
+
+.control-btn:active {
+    transform: scale(0.9);
+}
+
 /* タッチ操作用UI (デフォルト非表示、タッチ対応時表示) */
 .touch-controls {
     display: none;
@@ -301,11 +342,13 @@ header {
     justify-content: center;
     align-items: center;
     transition: background 0.1s;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .touch-btn:active {
-    background: rgba(0, 240, 255, 0.2);
+    background: rgba(0, 240, 255, 0.25);
     border-color: var(--neon-blue);
+    box-shadow: 0 0 15px var(--neon-blue);
 }
 
 .touch-btn.fire-btn {
@@ -318,26 +361,106 @@ header {
 }
 
 .touch-btn.fire-btn:active {
-    background: rgba(255, 0, 127, 0.2);
+    background: rgba(255, 0, 127, 0.25);
     border-color: var(--neon-pink);
+    box-shadow: 0 0 15px var(--neon-pink);
 }
 
-/* レスポンシブ対応 */
+/* レスポンシブ対応 - モバイルに最適化 */
 @media (max-width: 600px) {
-    .neon-text {
-        font-size: 2rem;
+    body {
+        align-items: flex-start;
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+        height: 100%;
     }
-    
-    .hud {
-        grid-template-columns: repeat(2, 1fr);
+
+    .game-container {
+        padding: 10px;
         gap: 10px;
+        height: 100dvh;
+        max-height: 100dvh;
+        justify-content: space-between;
     }
-    
+
+    header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        padding: 0 5px;
+    }
+
+    .neon-text {
+        font-size: 1.6rem;
+        margin: 0;
+    }
+
+    .game-controls {
+        margin-top: 0;
+        gap: 8px;
+    }
+
+    .control-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 0.9rem;
+    }
+
+    .hud {
+        grid-template-columns: repeat(4, 1fr);
+        padding: 10px;
+        gap: 5px;
+    }
+
+    .hud-item {
+        gap: 2px;
+    }
+
+    .hud-item .label {
+        font-size: 0.55rem;
+        letter-spacing: 1px;
+    }
+
+    .hud-item .value {
+        font-size: 0.9rem;
+    }
+
+    .lives-container {
+        height: 1rem;
+        gap: 4px;
+    }
+
+    .live-indicator {
+        width: 10px;
+        height: 8px;
+    }
+
+    .canvas-wrapper {
+        border-width: 1px;
+        /* モバイル用の高さ制限：ヘッダー、HUD、コントローラーの合計高さを引いて残りを最大高に */
+        max-height: calc(100dvh - 200px);
+        margin: 0 auto;
+    }
+
     .keyboard-instructions {
         display: none;
     }
-    
+
     .touch-controls {
         display: flex;
+        margin-top: 0;
+        padding-bottom: env(safe-area-inset-bottom, 10px);
+        gap: 10px;
+    }
+
+    .touch-btn {
+        height: 52px;
+        font-size: 1.3rem;
+    }
+
+    .touch-btn.fire-btn {
+        font-size: 1rem;
     }
 }
